@@ -1,0 +1,1076 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Primus Labz — CRM</title>
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;500;600;700;900&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg:#050b14; --panel:#0b1525; --border:#142035; --border2:#1e3355;
+    --cyan:#00e5c8; --cyan2:#00b89e; --gold:#f0b429; --red:#ff4d6d;
+    --blue:#3b82f6; --green:#22c55e; --text:#e2eaf5; --muted:#5a7a9e;
+    --glow:rgba(0,229,200,0.15);
+  }
+  *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+  html, body { background:var(--bg); color:var(--text); font-family:'Exo 2',sans-serif; min-height:100vh; height:100%; }
+  body { overflow-x:hidden; }
+  body::before {
+    content:''; position:fixed; inset:0; pointer-events:none; z-index:0;
+    background-image:linear-gradient(rgba(0,229,200,0.03) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(0,229,200,0.03) 1px,transparent 1px);
+    background-size:48px 48px;
+  }
+  body::after {
+    content:''; position:fixed; inset:0; pointer-events:none; z-index:0;
+    background:radial-gradient(ellipse 70% 50% at 50% 0%,rgba(0,229,200,0.07) 0%,transparent 70%);
+  }
+
+  /* ── Top bar ── */
+  #topbar {
+    position:sticky; top:0; z-index:100;
+    background:rgba(5,11,20,0.95); backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--border2);
+    display:flex; align-items:center; justify-content:space-between;
+    padding:0 16px; height:60px; gap:10px; overflow:hidden;
+  }
+  .logo { display:flex; align-items:center; gap:12px; flex-shrink:0; }
+  .logo-icon {
+    width:36px; height:36px; background:var(--glow); border:1px solid var(--cyan2);
+    border-radius:8px; display:flex; align-items:center; justify-content:center;
+    font-size:18px; box-shadow:0 0 16px rgba(0,229,200,0.2);
+  }
+  .logo-text h1 { font-size:17px; font-weight:900; letter-spacing:0.04em; color:#fff; }
+  .logo-text p  { font-size:10px; color:var(--muted); letter-spacing:0.12em; text-transform:uppercase; font-family:'DM Mono',monospace; }
+
+  /* ── Tab nav ── */
+  .tab-nav {
+    display:flex; gap:4px;
+    overflow-x:auto; -webkit-overflow-scrolling:touch;
+    scrollbar-width:none; flex-shrink:1; min-width:0;
+  }
+  .tab-nav::-webkit-scrollbar { display:none; }
+  .tab-btn {
+    background:transparent; border:1px solid transparent; color:var(--muted);
+    border-radius:8px; padding:7px 14px; font-size:12px; font-weight:600;
+    font-family:'Exo 2',sans-serif; cursor:pointer; letter-spacing:0.04em;
+    transition:all 0.2s; display:flex; align-items:center; gap:6px;
+    white-space:nowrap; flex-shrink:0;
+  }
+  .tab-btn:hover { color:var(--text); border-color:var(--border2); }
+  .tab-btn.active {
+    background:rgba(0,229,200,0.1); border-color:var(--cyan2);
+    color:var(--cyan); box-shadow:0 0 12px rgba(0,229,200,0.1);
+  }
+
+  /* ── Header controls ── */
+  .topbar-right { display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:6px 0; }
+  .live-badge { display:flex; align-items:center; gap:7px; font-size:11px; color:var(--cyan); font-family:'DM Mono',monospace; letter-spacing:0.1em; text-transform:uppercase; }
+  .live-dot { width:7px; height:7px; background:var(--cyan); border-radius:50%; box-shadow:0 0 8px var(--cyan); animation:pulse 2s infinite; }
+  .live-dot.offline { background:var(--muted); box-shadow:none; animation:none; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .refresh-timer { font-family:'DM Mono',monospace; font-size:11px; color:var(--muted); background:var(--panel); border:1px solid var(--border2); padding:5px 12px; border-radius:6px; min-width:130px; text-align:center; }
+  .ctrl-btn {
+    background:transparent; border:1px solid var(--border2); color:var(--muted);
+    border-radius:6px; padding:5px 11px; font-size:11px; cursor:pointer;
+    font-family:'DM Mono',monospace; transition:all 0.2s;
+  }
+  .ctrl-btn:hover { border-color:var(--cyan2); color:var(--cyan); }
+  .ctrl-btn.danger { border-color:rgba(255,77,109,0.4); color:var(--red); }
+  .ctrl-btn.danger:hover { background:rgba(255,77,109,0.1); border-color:var(--red); }
+
+  /* ── Tab panels ── */
+  .tab-panel { display:none; position:relative; z-index:1; }
+  .tab-panel.active { display:block; }
+
+  /* ── Setup Banner ── */
+  #setupBanner {
+    background:rgba(240,180,41,0.08); border:1px solid rgba(240,180,41,0.4);
+    border-radius:12px; padding:20px 24px; margin:20px 28px;
+    display:flex; align-items:flex-start; gap:16px;
+  }
+  #setupBanner.hidden { display:none; }
+  .setup-icon { font-size:24px; flex-shrink:0; margin-top:2px; }
+  .setup-body h3 { color:var(--gold); font-size:14px; margin-bottom:6px; }
+  .setup-body p  { font-size:13px; color:var(--muted); line-height:1.6; }
+  .url-input-row { display:flex; gap:10px; margin-top:12px; }
+  #scriptUrl {
+    flex:1; background:var(--bg); border:1px solid var(--border2);
+    border-radius:8px; padding:9px 14px; color:var(--text);
+    font-family:'DM Mono',monospace; font-size:12px; outline:none;
+  }
+  #scriptUrl:focus { border-color:var(--cyan2); }
+  #connectBtn {
+    background:var(--cyan2); color:#050b14; border:none; border-radius:8px;
+    padding:9px 20px; font-family:'Exo 2',sans-serif; font-weight:700;
+    font-size:13px; cursor:pointer; transition:background 0.2s,transform 0.1s; white-space:nowrap;
+  }
+  #connectBtn:hover { background:var(--cyan); transform:translateY(-1px); }
+
+  /* ── Dashboard content ── */
+  #dashContent { padding:24px 28px; }
+
+  /* ── KPI ── */
+  .kpi-row { display:grid; grid-template-columns:repeat(6,1fr); gap:14px; margin-bottom:24px; }
+  .kpi { background:var(--panel); border:1px solid var(--border2); border-radius:12px; padding:18px 16px; transition:border-color 0.2s,box-shadow 0.2s; animation:fadeUp 0.5s ease both; }
+  .kpi:hover { border-color:var(--cyan2); box-shadow:0 0 20px rgba(0,229,200,0.08); }
+  .kpi:nth-child(1){animation-delay:.05s} .kpi:nth-child(2){animation-delay:.1s}
+  .kpi:nth-child(3){animation-delay:.15s} .kpi:nth-child(4){animation-delay:.2s}
+  .kpi:nth-child(5){animation-delay:.25s} .kpi:nth-child(6){animation-delay:.3s}
+  @keyframes fadeUp { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:none} }
+  .kpi-label { font-family:'DM Mono',monospace; font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.12em; margin-bottom:10px; }
+  .kpi-value { font-size:28px; font-weight:700; line-height:1; }
+  .kpi-value.cyan{color:var(--cyan)} .kpi-value.gold{color:var(--gold)} .kpi-value.red{color:var(--red)} .kpi-value.green{color:var(--green)} .kpi-value.blue{color:var(--blue)}
+  .kpi-sub { font-size:11px; color:var(--muted); margin-top:5px; font-family:'DM Mono',monospace; }
+
+  /* ── Layout ── */
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-bottom:18px; }
+  .grid3 { display:grid; grid-template-columns:2fr 1fr; gap:18px; margin-bottom:18px; }
+  .panel { background:var(--panel); border:1px solid var(--border2); border-radius:14px; padding:22px; animation:fadeUp 0.5s ease both; animation-delay:0.3s; }
+  .panel-title { font-size:11px; font-weight:600; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); font-family:'DM Mono',monospace; margin-bottom:18px; display:flex; align-items:center; gap:8px; }
+  .panel-title::before { content:''; width:3px; height:14px; background:var(--cyan); border-radius:2px; box-shadow:0 0 8px var(--cyan); }
+
+  /* ── Table ── */
+  table { width:100%; border-collapse:collapse; font-size:12.5px; }
+  th { text-align:left; font-family:'DM Mono',monospace; font-size:10px; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); padding:0 10px 10px; border-bottom:1px solid var(--border2); }
+  td { padding:11px 10px; border-bottom:1px solid var(--border); color:var(--text); vertical-align:middle; }
+  tr:last-child td { border-bottom:none; }
+  tr:hover td { background:rgba(255,255,255,0.02); }
+  .empty-row td { color:var(--muted); font-style:italic; text-align:center; padding:20px; }
+
+  /* ── Badges ── */
+  .badge { display:inline-block; padding:3px 9px; border-radius:4px; font-size:10px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; font-family:'DM Mono',monospace; }
+  .badge-green{background:rgba(34,197,94,0.15);color:var(--green)} .badge-gold{background:rgba(240,180,41,0.15);color:var(--gold)}
+  .badge-blue{background:rgba(59,130,246,0.15);color:var(--blue)} .badge-red{background:rgba(255,77,109,0.15);color:var(--red)}
+  .badge-cyan{background:rgba(0,229,200,0.12);color:var(--cyan)} .badge-muted{background:rgba(90,122,158,0.15);color:var(--muted)}
+
+  /* ── Bar chart ── */
+  .bar-chart { display:flex; flex-direction:column; gap:10px; }
+  .bar-row { display:flex; align-items:center; gap:10px; }
+  .bar-label { font-size:11px; color:var(--text); width:160px; flex-shrink:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-family:'DM Mono',monospace; }
+  .bar-track { flex:1; height:8px; background:var(--border); border-radius:4px; overflow:hidden; }
+  .bar-fill { height:100%; border-radius:4px; transition:width 0.8s cubic-bezier(.4,0,.2,1); }
+  .bar-val { font-size:11px; color:var(--muted); width:56px; text-align:right; font-family:'DM Mono',monospace; }
+
+  /* ── Stat list ── */
+  .stat-list { display:flex; flex-direction:column; gap:12px; }
+  .stat-item { display:flex; justify-content:space-between; align-items:center; padding:10px 12px; background:rgba(255,255,255,0.02); border-radius:8px; }
+  .stat-item-label { font-size:12px; color:var(--text); }
+  .stat-item-val { font-size:13px; font-weight:600; font-family:'DM Mono',monospace; color:var(--cyan); }
+
+  /* ── Appt cards ── */
+  .appt-cards { display:flex; flex-direction:column; gap:10px; }
+  .appt-card { border:1px solid var(--border2); border-radius:10px; padding:14px 16px; display:flex; align-items:center; gap:14px; }
+  .appt-icon { font-size:22px; flex-shrink:0; }
+  .appt-info h4 { font-size:13px; font-weight:600; margin-bottom:2px; }
+  .appt-info p  { font-size:11px; color:var(--muted); font-family:'DM Mono',monospace; }
+  .appt-right { margin-left:auto; text-align:right; }
+  .appt-right span { display:block; font-size:11px; color:var(--muted); font-family:'DM Mono',monospace; margin-top:3px; }
+
+  /* ── Donut legend ── */
+  .donut-legend { display:flex; flex-direction:column; gap:10px; flex:1; width:100%; }
+  .legend-item { display:flex; align-items:center; gap:8px; font-size:12px; }
+  .legend-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+
+  /* ── Sheet tab ── */
+  #sheetPanel { position:relative; z-index:1; }
+  .sheet-toolbar {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 28px; border-bottom:1px solid var(--border2);
+    background:rgba(11,21,37,0.8);
+  }
+  .sheet-toolbar p { font-size:12px; color:var(--muted); font-family:'DM Mono',monospace; }
+  .sheet-toolbar a {
+    font-size:12px; color:var(--cyan); font-family:'DM Mono',monospace;
+    text-decoration:none; border:1px solid var(--border2); padding:5px 14px;
+    border-radius:6px; transition:all 0.2s;
+  }
+  .sheet-toolbar a:hover { border-color:var(--cyan2); background:rgba(0,229,200,0.08); }
+  #sheetFrame {
+    width:100%; border:none; display:block;
+    height:calc(100vh - 110px);
+    background:var(--bg);
+  }
+
+  /* ── Error toast ── */
+  #errorToast {
+    position:fixed; bottom:24px; right:24px; background:#1a0a10; border:1px solid var(--red);
+    border-radius:10px; padding:14px 18px; font-size:12px; color:var(--red);
+    font-family:'DM Mono',monospace; z-index:9999; opacity:0; pointer-events:none;
+    transition:opacity 0.3s; max-width:340px;
+  }
+  #errorToast.show { opacity:1; }
+
+  /* ── Responsive ── */
+  @media(max-width:1100px) { .kpi-row{grid-template-columns:repeat(3,1fr);} .grid2,.grid3{grid-template-columns:1fr;} }
+  @media(max-width:700px)  {
+    #dashContent{padding:14px;}
+    .kpi-row{grid-template-columns:repeat(2,1fr);}
+    .bar-label{width:100px;}
+    #topbar{padding:0 10px; height:auto; min-height:60px; flex-wrap:wrap; padding-top:8px; padding-bottom:8px;}
+    .sheet-toolbar{padding:12px 14px;}
+    .topbar-right{display:none;}
+    .logo-text p{display:none;}
+    .tab-nav{width:100%;}
+  }
+
+  ::-webkit-scrollbar{width:6px;} ::-webkit-scrollbar-track{background:var(--bg);} ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+
+  /* ── Form pages ── */
+  .form-page { max-width:600px; margin:0 auto; padding:28px; }
+  .form-header { display:flex; align-items:center; gap:16px; margin-bottom:24px; }
+  .form-header-icon { font-size:36px; width:60px; height:60px; background:var(--glow); border:1px solid var(--border2); border-radius:14px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .form-header h2 { font-size:20px; font-weight:800; color:#fff; margin-bottom:4px; }
+  .form-header p  { font-size:12px; color:var(--muted); font-family:'DM Mono',monospace; }
+  .form-card { background:var(--panel); border:1px solid var(--border2); border-radius:16px; padding:24px; display:flex; flex-direction:column; gap:16px; }
+  .form-row2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .form-group { display:flex; flex-direction:column; gap:6px; }
+  .form-group label { font-size:11px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:0.1em; font-family:'DM Mono',monospace; }
+  .form-group input, .form-group select, .form-group textarea {
+    background:var(--bg); border:1px solid var(--border2); border-radius:8px;
+    padding:10px 14px; color:var(--text); font-family:'Exo 2',sans-serif;
+    font-size:13px; outline:none; transition:border-color 0.2s; width:100%;
+  }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color:var(--cyan2); box-shadow:0 0 0 3px rgba(0,229,200,0.08); }
+  .form-group select { cursor:pointer; }
+  .form-group textarea { resize:vertical; min-height:70px; }
+  .submit-btn {
+    width:100%; padding:14px; background:var(--cyan2); color:#050b14;
+    border:none; border-radius:10px; font-family:'Exo 2',sans-serif;
+    font-weight:800; font-size:15px; cursor:pointer; letter-spacing:0.04em;
+    transition:background 0.2s, transform 0.1s; margin-top:4px;
+  }
+  .submit-btn:hover { background:var(--cyan); transform:translateY(-1px); }
+  .submit-btn:disabled { background:var(--muted); cursor:not-allowed; transform:none; }
+  .form-result { text-align:center; font-size:13px; font-family:'DM Mono',monospace; min-height:20px; }
+  .form-result.success { color:var(--green); }
+  .form-result.error   { color:var(--red); }
+  @media(max-width:500px) { .form-row2{grid-template-columns:1fr;} .form-page{padding:16px;} }
+</style>
+</head>
+<body>
+
+<!-- ── Top Bar ── -->
+<div id="topbar">
+  <div id="topbarLeft">
+    <div class="logo">
+      <div class="logo-icon">🧬</div>
+      <div class="logo-text">
+        <h1>PRIMUS LABZ</h1>
+        <p>Business CRM</p>
+      </div>
+    </div>
+    <div class="tab-nav">
+      <button class="tab-btn active" onclick="switchTab('dashboard')">📊 Dashboard</button>
+      <button class="tab-btn" onclick="switchTab('revenue')">💰 Add Order</button>
+      <button class="tab-btn" onclick="switchTab('appointment')">📅 Add Appointment</button>
+      <button class="tab-btn" onclick="switchTab('sheet')">📋 View Sheet</button>
+    </div>
+  </div>
+  <div class="topbar-right" id="dashControls">
+    <div class="live-badge"><div class="live-dot" id="liveDot"></div><span id="liveStatus">Waiting for data</span></div>
+    <div class="refresh-timer" id="refreshTimer">Next refresh in —</div>
+    <button class="ctrl-btn" onclick="fetchData()">↻ Refresh</button>
+    <button class="ctrl-btn danger" id="disconnectBtn" onclick="disconnectSheet()" style="display:none;">⚙ Change URL</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     TAB 1 — DASHBOARD
+═══════════════════════════════════════════ -->
+<div class="tab-panel active" id="tab-dashboard">
+
+  <!-- Setup Banner -->
+  <div id="setupBanner">
+    <div class="setup-icon">⚙️</div>
+    <div class="setup-body" style="flex:1">
+      <h3>Connect to Google Sheets</h3>
+      <p>Paste your Google Apps Script Web App URL below. Dashboard refreshes every 30 seconds.<br>
+      <span style="color:var(--cyan);font-size:11px;font-family:'DM Mono',monospace;">Apps Script → Deploy → New Deployment → Web App → Copy URL</span></p>
+      <div class="url-input-row">
+        <input id="scriptUrl" type="text" placeholder="https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec"/>
+        <button id="connectBtn" onclick="connectSheet()">Connect →</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="dashContent">
+    <!-- KPIs -->
+    <div class="kpi-row">
+      <div class="kpi"><div class="kpi-label">Total Customers</div><div class="kpi-value cyan" id="kpiCustomers">—</div><div class="kpi-sub">Active accounts</div></div>
+      <div class="kpi"><div class="kpi-label">Total Orders</div><div class="kpi-value blue" id="kpiOrders">—</div><div class="kpi-sub">All-time orders</div></div>
+      <div class="kpi"><div class="kpi-label">Gross Revenue</div><div class="kpi-value gold" id="kpiRevenue">—</div><div class="kpi-sub">All orders</div></div>
+      <div class="kpi"><div class="kpi-label">Collected Revenue</div><div class="kpi-value green" id="kpiCollected">—</div><div class="kpi-sub">Completed only</div></div>
+      <div class="kpi"><div class="kpi-label">Avg Order Value</div><div class="kpi-value cyan" id="kpiAvg">—</div><div class="kpi-sub">Per order</div></div>
+      <div class="kpi"><div class="kpi-label">Out of Stock</div><div class="kpi-value red" id="kpiOOS">—</div><div class="kpi-sub" id="kpiOOSSub">of — products</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="panel"><div class="panel-title">Recent Orders</div><div id="ordersTable"><p style="color:var(--muted);font-size:12px;">Waiting for connection…</p></div></div>
+      <div class="panel"><div class="panel-title">Customer Profiles</div><div id="customersTable"><p style="color:var(--muted);font-size:12px;">Waiting for connection…</p></div></div>
+    </div>
+
+    <div class="grid3">
+      <div class="panel"><div class="panel-title">Revenue by Category</div><div class="bar-chart" id="barChart"><p style="color:var(--muted);font-size:12px;">Waiting for connection…</p></div></div>
+      <div class="panel">
+        <div class="panel-title">Order Status</div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:18px;">
+          <svg id="donutSvg" width="140" height="140" viewBox="0 0 140 140">
+            <circle cx="70" cy="70" r="54" fill="none" stroke="#142035" stroke-width="18"/>
+            <text x="70" y="65" text-anchor="middle" fill="#e2eaf5" font-family="Exo 2" font-size="22" font-weight="700">—</text>
+            <text x="70" y="82" text-anchor="middle" fill="#5a7a9e" font-family="DM Mono" font-size="9">orders</text>
+          </svg>
+          <div class="donut-legend" id="donutLegend"><p style="color:var(--muted);font-size:12px;">—</p></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="panel"><div class="panel-title">Appointments & Follow-Ups</div><div class="appt-cards" id="apptsPanel"><p style="color:var(--muted);font-size:12px;">Waiting for connection…</p></div></div>
+      <div class="panel">
+        <div class="panel-title">Inventory Alerts</div>
+        <div class="stat-list" id="inventoryAlerts"><p style="color:var(--muted);font-size:12px;">Waiting for connection…</p></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     TAB 2 — ADD ORDER FORM
+═══════════════════════════════════════════ -->
+<div class="tab-panel" id="tab-revenue">
+  <div class="form-page">
+    <div class="form-header">
+      <div class="form-header-icon">💰</div>
+      <div>
+        <h2>New Order</h2>
+        <p>Submits directly to your Revenue sheet</p>
+      </div>
+    </div>
+    <div class="form-card" id="revenueForm">
+      <div class="form-row2">
+        <div class="form-group">
+          <label>Order ID</label>
+          <input type="text" id="rev_orderId" placeholder="ORD-004"/>
+        </div>
+        <div class="form-group">
+          <label>Order Date</label>
+          <input type="date" id="rev_date"/>
+        </div>
+      </div>
+      <div class="form-row2">
+        <div class="form-group">
+          <label>Customer ID</label>
+          <select id="rev_custId" onchange="onCustomerSelect()">
+            <option value="">— Select Customer —</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Customer Name</label>
+          <input type="text" id="rev_custName" placeholder="Auto-filled" readonly
+            style="background:rgba(0,229,200,0.04);color:var(--cyan);cursor:default;"/>
+        </div>
+      </div>
+      <div class="form-row2">
+        <div class="form-group">
+          <label>Product ID</label>
+          <select id="rev_productId" onchange="onProductSelect()">
+            <option value="">— Select Product —</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Category</label>
+          <input type="text" id="rev_category" placeholder="Auto-filled" readonly
+            style="background:rgba(0,229,200,0.04);color:var(--cyan);cursor:default;"/>
+        </div>
+      </div>
+      <div class="form-row2">
+        <div class="form-group">
+          <label>Product Name</label>
+          <input type="text" id="rev_productName" placeholder="Auto-filled" readonly
+            style="background:rgba(0,229,200,0.04);color:var(--cyan);cursor:default;"/>
+        </div>
+        <div class="form-group">
+          <label>Unit Price ($)</label>
+          <input type="text" id="rev_unitPrice" placeholder="Auto-filled" readonly
+            style="background:rgba(0,229,200,0.04);color:var(--cyan);cursor:default;"/>
+        </div>
+      </div>
+      <div class="form-row2">
+        <div class="form-group">
+          <label>Order Total ($)</label>
+          <input type="number" id="rev_total" placeholder="100" step="0.01"/>
+        </div>
+        <div class="form-group">
+          <label>Cost Total ($)</label>
+          <input type="number" id="rev_cost" placeholder="50" step="0.01"/>
+        </div>
+      </div>
+      <div class="form-row2">
+        <div class="form-group">
+          <label>Status</label>
+          <select id="rev_status">
+            <option>Processing</option>
+            <option>Shipped</option>
+            <option>Completed</option>
+            <option>Cancelled</option>
+            <option>Refunded</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Payment Method</label>
+          <select id="rev_payment">
+            <option>Zelle</option>
+            <option>Cash</option>
+            <option>Venmo</option>
+            <option>CashApp</option>
+            <option>Check</option>
+            <option>Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Ship Date</label>
+        <input type="date" id="rev_shipDate"/>
+      </div>
+      <div class="form-group">
+        <label>Notes</label>
+        <textarea id="rev_notes" placeholder="Optional notes..." rows="2"></textarea>
+      </div>
+      <button class="submit-btn" onclick="submitOrder()">
+        <span id="revBtnText">💰 Submit Order</span>
+      </button>
+      <div id="revResult" class="form-result"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     TAB 3 — ADD APPOINTMENT FORM
+═══════════════════════════════════════════ -->
+<div class="tab-panel" id="tab-appointment">
+  <div class="form-page">
+    <div class="form-header">
+      <div class="form-header-icon">📅</div>
+      <div>
+        <h2>New Appointment</h2>
+        <p>Submits directly to your Appointments sheet</p>
+      </div>
+    </div>
+    <div class="form-card" id="apptForm">
+      <div class="form-row2">
+        <div class="form-group">
+          <label>Appointment ID</label>
+          <input type="text" id="appt_id" placeholder="APT003"/>
+        </div>
+        <div class="form-group">
+          <label>Customer ID</label>
+          <select id="appt_custId" onchange="onApptCustomerSelect()">
+            <option value="">— Select Customer —</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Customer Name</label>
+        <input type="text" id="appt_custName" placeholder="Auto-filled" readonly
+          style="background:rgba(0,229,200,0.04);color:var(--cyan);cursor:default;"/>
+      </div>
+      <div class="form-row2">
+        <div class="form-group">
+          <label>Date</label>
+          <input type="date" id="appt_date"/>
+        </div>
+        <div class="form-group">
+          <label>Type</label>
+          <select id="appt_type">
+            <option>Phone Call</option>
+            <option>Demo</option>
+            <option>Follow-Up</option>
+            <option>In-Person</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Purpose / Notes</label>
+        <textarea id="appt_notes" placeholder="What is this appointment about?" rows="2"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Products of Interest <span style="color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;">(hold Ctrl / Cmd to select multiple)</span></label>
+        <select id="appt_products" multiple style="height:120px;padding:6px;" onchange="updateApptProductsPreview()">
+        </select>
+        <div id="appt_products_preview" style="font-size:11px;color:var(--cyan);font-family:'DM Mono',monospace;margin-top:4px;min-height:16px;"></div>
+      </div>
+      <div class="form-row2">
+        <div class="form-group">
+          <label>Status</label>
+          <select id="appt_status">
+            <option>Scheduled</option>
+            <option>Confirmed</option>
+            <option>Completed</option>
+            <option>Cancelled</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Owner</label>
+          <input type="text" id="appt_owner" placeholder="Your name"/>
+        </div>
+      </div>
+      <div class="form-row2">
+        <div class="form-group">
+          <label>Follow-Up Date</label>
+          <input type="date" id="appt_followDate"/>
+        </div>
+        <div class="form-group">
+          <label>Follow-Up Time</label>
+          <input type="time" id="appt_followTime"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Follow-Up Done?</label>
+        <select id="appt_followDone">
+          <option>No</option>
+          <option>Yes</option>
+        </select>
+      </div>
+      <button class="submit-btn" onclick="submitAppointment()">
+        <span id="apptBtnText">📅 Submit Appointment</span>
+      </button>
+      <div id="apptResult" class="form-result"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     TAB 4 — GOOGLE SHEET (EMBEDDED)
+═══════════════════════════════════════════ -->
+<div class="tab-panel" id="tab-sheet">
+  <div id="sheetPanel">
+    <div class="sheet-toolbar">
+      <p>📋 Live CRM Data — edits here reflect in the dashboard on next refresh</p>
+      <a href="https://docs.google.com/spreadsheets/d/1sNVhciTHGjrafaZJOP4mxPzHSvw7fdXKzKYdSSdkf4g/edit" target="_blank">↗ Open in Google Sheets</a>
+    </div>
+    <!-- Desktop: embed iframe -->
+    <div id="sheetDesktop">
+      <iframe id="sheetFrame"
+        src="https://docs.google.com/spreadsheets/d/1sNVhciTHGjrafaZJOP4mxPzHSvw7fdXKzKYdSSdkf4g/edit?usp=sharing&rm=minimal"
+        allowfullscreen>
+      </iframe>
+    </div>
+    <!-- Mobile: iframe doesn't work, show open button instead -->
+    <div id="sheetMobile" style="display:none;">
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 28px;gap:28px;text-align:center;">
+        <div style="font-size:56px;">📋</div>
+        <div>
+          <h2 style="font-size:20px;font-weight:700;color:var(--text);margin-bottom:10px;">Open Your CRM Sheet</h2>
+          <p style="font-size:13px;color:var(--muted);line-height:1.7;max-width:320px;">
+            Google Sheets works best in its own app on mobile. Tap below to open and edit your CRM data — changes will appear in the dashboard on the next refresh.
+          </p>
+        </div>
+        <a href="https://docs.google.com/spreadsheets/d/1sNVhciTHGjrafaZJOP4mxPzHSvw7fdXKzKYdSSdkf4g/edit"
+           target="_blank"
+           style="display:inline-flex;align-items:center;gap:10px;background:var(--cyan2);color:#050b14;
+                  font-family:'Exo 2',sans-serif;font-weight:700;font-size:15px;
+                  padding:14px 32px;border-radius:12px;text-decoration:none;
+                  box-shadow:0 0 24px rgba(0,229,200,0.3);transition:all 0.2s;">
+          ↗ Open in Google Sheets
+        </a>
+        <div style="display:flex;flex-direction:column;gap:10px;width:100%;max-width:320px;">
+          <div style="background:var(--panel);border:1px solid var(--border2);border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:12px;">
+            <span style="font-size:20px;">📱</span>
+            <div style="text-align:left;">
+              <p style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:2px;">Tip: Install the Sheets app</p>
+              <p style="font-size:11px;color:var(--muted);">For the best mobile editing experience</p>
+            </div>
+          </div>
+          <div style="background:var(--panel);border:1px solid var(--border2);border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:12px;">
+            <span style="font-size:20px;">🔄</span>
+            <div style="text-align:left;">
+              <p style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:2px;">Auto-sync every 30s</p>
+              <p style="font-size:11px;color:var(--muted);">Dashboard reflects your edits automatically</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="errorToast"></div>
+
+<script>
+// ═══════════════════════════════════════════
+//  TAB SWITCHING
+// ═══════════════════════════════════════════
+function switchTab(name) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  event.currentTarget.classList.add('active');
+  // Hide dashboard controls when on sheet tab
+  document.getElementById('dashControls').style.opacity = name === 'dashboard' ? '1' : '0.4';
+}
+
+// ═══════════════════════════════════════════
+//  CONFIG
+// ═══════════════════════════════════════════
+const REFRESH_INTERVAL = 30;
+let scriptUrl = localStorage.getItem('primusLabzScriptUrl') || 'https://script.google.com/macros/s/AKfycbygJhqvGmfAYbD1x8IYOUV415Rsm83wJMFDFmLZlHYlZGSqfeV95Pr5yzfxJHztpt7n/exec';
+let countdown = REFRESH_INTERVAL;
+let refreshInterval, countdownInterval;
+
+// Cached data for form dropdowns
+let cachedCustomers = []; // [{id, name}]
+let cachedProducts  = []; // [{id, name, category, unitPrice, costPrice}]
+
+window.addEventListener('DOMContentLoaded', () => {
+  if (scriptUrl) {
+    document.getElementById('scriptUrl').value = scriptUrl;
+    document.getElementById('setupBanner').classList.add('hidden');
+    document.getElementById('disconnectBtn').style.display = 'block';
+    startAutoRefresh();
+  }
+});
+
+// ═══════════════════════════════════════════
+//  CONNECTION
+// ═══════════════════════════════════════════
+function connectSheet() {
+  const val = document.getElementById('scriptUrl').value.trim();
+  if (!val.startsWith('https://script.google.com')) {
+    showError('Please enter a valid Google Apps Script URL.');
+    return;
+  }
+  scriptUrl = val;
+  localStorage.setItem('primusLabzScriptUrl', scriptUrl);
+  document.getElementById('setupBanner').classList.add('hidden');
+  document.getElementById('disconnectBtn').style.display = 'block';
+  startAutoRefresh();
+}
+
+function disconnectSheet() {
+  clearInterval(refreshInterval);
+  clearInterval(countdownInterval);
+  scriptUrl = '';
+  localStorage.removeItem('primusLabzScriptUrl');
+  document.getElementById('scriptUrl').value = '';
+  document.getElementById('setupBanner').classList.remove('hidden');
+  document.getElementById('disconnectBtn').style.display = 'none';
+  document.getElementById('refreshTimer').textContent = 'Next refresh in —';
+  setLive(false);
+  window.scrollTo({ top:0, behavior:'smooth' });
+}
+
+// ═══════════════════════════════════════════
+//  AUTO REFRESH
+// ═══════════════════════════════════════════
+function startAutoRefresh() {
+  fetchData();
+  clearInterval(refreshInterval);
+  clearInterval(countdownInterval);
+  refreshInterval = setInterval(fetchData, REFRESH_INTERVAL * 1000);
+  countdownInterval = setInterval(() => {
+    countdown--;
+    if (countdown <= 0) countdown = REFRESH_INTERVAL;
+    document.getElementById('refreshTimer').textContent = `Next refresh in ${countdown}s`;
+  }, 1000);
+}
+
+// ═══════════════════════════════════════════
+//  FETCH (JSONP)
+// ═══════════════════════════════════════════
+function fetchData() {
+  if (!scriptUrl) return;
+  countdown = REFRESH_INTERVAL;
+  const cbName = '__primusLabzCb_' + Date.now();
+  const script = document.createElement('script');
+  const timer = setTimeout(() => {
+    cleanup();
+    setLive(false);
+    showError('Request timed out. Check your Apps Script URL is deployed as "Anyone".');
+  }, 10000);
+  window[cbName] = (data) => { cleanup(); renderDashboard(data); setLive(true, data.lastUpdated); };
+  function cleanup() { clearTimeout(timer); delete window[cbName]; if (script.parentNode) script.parentNode.removeChild(script); }
+  script.src = `${scriptUrl}?callback=${cbName}&t=${Date.now()}`;
+  script.onerror = () => { cleanup(); setLive(false); showError('Failed to load script. Make sure it is deployed for "Anyone".'); };
+  document.head.appendChild(script);
+}
+
+// ═══════════════════════════════════════════
+//  RENDER
+// ═══════════════════════════════════════════
+function renderDashboard(data) {
+  data.revenue = recomputeSummary(data.revenue);
+  renderKPIs(data);
+  renderOrdersTable(data.revenue);
+  renderCustomersTable(data.customers);
+  renderBarChart(data.revenue);
+  renderDonut(data.revenue);
+  renderAppointments(data.appointments);
+  renderInventoryAlerts(data.inventory);
+  cacheFormData(data);
+}
+
+function cacheFormData(data) {
+  // Cache customers: [custId, firstName, lastName, ...]
+  cachedCustomers = (data.customers.rows || [])
+    .filter(r => r[0] && r[0].toString().startsWith('C'))
+    .map(r => ({
+      id:   r[0].trim(),
+      name: ((r[1]||'').trim() + ' ' + (r[2]||'').trim()).trim()
+    }));
+
+  // Cache products from inventory: [id, name, category, unitPrice, costPrice, ...]
+  cachedProducts = (data.inventory.rows || [])
+    .filter(r => r[0] && r[0].toString().startsWith('P'))
+    .map(r => ({
+      id:        r[0].trim(),
+      name:      r[1] || '',
+      category:  r[2] || '',
+      unitPrice: r[3] || '',
+      costPrice: r[4] || ''
+    }));
+
+  populateOrderDropdowns();
+}
+
+function populateOrderDropdowns() {
+  // ── Order form: Customer dropdown ──
+  const custSel = document.getElementById('rev_custId');
+  const prevCust = custSel.value;
+  custSel.innerHTML = '<option value="">— Select Customer —</option>';
+  cachedCustomers.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c.id;
+    opt.textContent = `${c.id} — ${c.name}`;
+    custSel.appendChild(opt);
+  });
+  if (prevCust) custSel.value = prevCust;
+
+  // ── Order form: Product dropdown ──
+  const prodSel = document.getElementById('rev_productId');
+  const prevProd = prodSel.value;
+  prodSel.innerHTML = '<option value="">— Select Product —</option>';
+  cachedProducts.forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p.id;
+    opt.textContent = `${p.id} — ${p.name}`;
+    prodSel.appendChild(opt);
+  });
+  if (prevProd) prodSel.value = prevProd;
+
+  // ── Appointment form: Customer dropdown ──
+  const apptCustSel = document.getElementById('appt_custId');
+  const prevApptCust = apptCustSel.value;
+  apptCustSel.innerHTML = '<option value="">— Select Customer —</option>';
+  cachedCustomers.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c.id;
+    opt.textContent = `${c.id} — ${c.name}`;
+    apptCustSel.appendChild(opt);
+  });
+  if (prevApptCust) apptCustSel.value = prevApptCust;
+
+  // ── Appointment form: Products of Interest multi-select ──
+  const apptProdSel = document.getElementById('appt_products');
+  const prevSelected = Array.from(apptProdSel.selectedOptions).map(o => o.value);
+  apptProdSel.innerHTML = '';
+  cachedProducts.forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p.name;
+    opt.textContent = `${p.id} — ${p.name}`;
+    if (prevSelected.includes(p.name)) opt.selected = true;
+    apptProdSel.appendChild(opt);
+  });
+  updateApptProductsPreview();
+}
+
+function onApptCustomerSelect() {
+  const id = document.getElementById('appt_custId').value;
+  const c = cachedCustomers.find(c => c.id === id);
+  document.getElementById('appt_custName').value = c ? c.name : '';
+}
+
+function updateApptProductsPreview() {
+  const sel = document.getElementById('appt_products');
+  const selected = Array.from(sel.selectedOptions).map(o => o.value);
+  const preview = document.getElementById('appt_products_preview');
+  preview.textContent = selected.length > 0 ? '✓ ' + selected.join(', ') : '';
+}
+
+function onCustomerSelect() {
+  const id = document.getElementById('rev_custId').value;
+  const c = cachedCustomers.find(c => c.id === id);
+  document.getElementById('rev_custName').value = c ? c.name : '';
+}
+
+function onProductSelect() {
+  const id = document.getElementById('rev_productId').value;
+  const p = cachedProducts.find(p => p.id === id);
+  if (p) {
+    document.getElementById('rev_productName').value = p.name;
+    document.getElementById('rev_category').value    = p.category;
+    document.getElementById('rev_unitPrice').value   = p.unitPrice ? '$' + parseMoney(p.unitPrice).toFixed(2) : '';
+    // Auto-fill cost if empty
+    const costEl = document.getElementById('rev_cost');
+    if (!costEl.value) costEl.value = parseMoney(p.costPrice) || '';
+  } else {
+    document.getElementById('rev_productName').value = '';
+    document.getElementById('rev_category').value    = '';
+    document.getElementById('rev_unitPrice').value   = '';
+  }
+}
+
+function renderKPIs(data) {
+  const customers = (data.customers.rows || []).length;
+  const s = data.revenue.summary || {};
+  const inv = data.inventory.rows || [];
+  const oos = inv.filter(r => r[10] === 'OUT OF STOCK').length;
+  setText('kpiCustomers', customers);
+  setText('kpiOrders',    s.orderCount || 0);
+  setText('kpiRevenue',   '$' + fmtNum(s.totalRevenue));
+  setText('kpiCollected', '$' + fmtNum(s.completedRevenue));
+  setText('kpiAvg',       '$' + fmtNum(s.avgOrderValue));
+  setText('kpiOOS',       oos);
+  setText('kpiOOSSub',    `of ${inv.length} products`);
+}
+
+function renderOrdersTable(rev) {
+  const rows = (rev.rows || []).slice(0, 10);
+  let html = `<table><thead><tr><th>Order ID</th><th>Customer</th><th>Product</th><th>Total</th><th>Payment</th><th>Status</th></tr></thead><tbody>`;
+  if (!rows.length) html += `<tr class="empty-row"><td colspan="6">No orders yet</td></tr>`;
+  rows.forEach(r => {
+    html += `<tr>
+      <td><span style="font-family:'DM Mono',monospace;color:var(--muted);font-size:11px;">${r[0]}</span></td>
+      <td>${r[3]||'—'}</td>
+      <td style="color:var(--muted);font-size:12px;">${r[6]||r[5]||'—'}</td>
+      <td style="font-family:'DM Mono',monospace;color:var(--gold);">$${fmtNum(r[7])}</td>
+      <td><span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);">${r[11]||'—'}</span></td>
+      <td>${statusBadge(r[10])}</td>
+    </tr>`;
+  });
+  document.getElementById('ordersTable').innerHTML = html + '</tbody></table>';
+}
+
+function renderCustomersTable(cust) {
+  const rows = (cust.rows || []).slice(0, 10);
+  let html = `<table><thead><tr><th>ID</th><th>Name</th><th>Location</th><th>Type</th><th>Top Cat.</th><th>Orders</th></tr></thead><tbody>`;
+  if (!rows.length) html += `<tr class="empty-row"><td colspan="6">No customers yet</td></tr>`;
+  rows.forEach(r => {
+    html += `<tr>
+      <td><span style="font-family:'DM Mono',monospace;color:var(--muted);font-size:10px;">${r[0]}</span></td>
+      <td>${(r[1]||'').trim()} ${(r[2]||'').trim()}</td>
+      <td style="color:var(--muted);font-size:12px;">${r[6]||'—'}${r[7]?', '+r[7]:''}</td>
+      <td><span class="badge badge-cyan">${r[8]||'—'}</span></td>
+      <td style="font-size:11px;color:var(--cyan);">${r[13]||'—'}</td>
+      <td style="font-family:'DM Mono',monospace;color:var(--cyan);">${r[12]||'0'}</td>
+    </tr>`;
+  });
+  document.getElementById('customersTable').innerHTML = html + '</tbody></table>';
+}
+
+function renderBarChart(rev) {
+  const cats = rev.summary && rev.summary.categoryCounts ? rev.summary.categoryCounts : {};
+  const entries = Object.entries(cats).sort((a,b) => b[1]-a[1]);
+  if (!entries.length) { document.getElementById('barChart').innerHTML = '<p style="color:var(--muted);font-size:12px;">No revenue data yet</p>'; return; }
+  const max = entries[0][1] || 1;
+  const colors = ['#00e5c8','#f0b429','#3b82f6','#22c55e','#ff4d6d','#a78bfa','#fb923c'];
+  let html = '';
+  entries.forEach(([cat,val],i) => {
+    const pct = (val/max*100).toFixed(1);
+    const color = colors[i%colors.length];
+    html += `<div class="bar-row"><div class="bar-label">${cat}</div><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${color};box-shadow:0 0 8px ${color}60;"></div></div><div class="bar-val">$${fmtNum(val)}</div></div>`;
+  });
+  document.getElementById('barChart').innerHTML = html;
+}
+
+function renderDonut(rev) {
+  const sc = rev.summary && rev.summary.statusCounts ? rev.summary.statusCounts : {};
+  const entries = Object.entries(sc);
+  const total = entries.reduce((s,[,v]) => s+v, 0);
+  const colors = { Completed:'#22c55e', Processing:'#f0b429', Shipped:'#3b82f6', Cancelled:'#ff4d6d', Refunded:'#5a7a9e' };
+  const C = 2*Math.PI*54;
+  let circles = '', offset = 0;
+  entries.forEach(([status,count]) => {
+    const arc = (total>0?count/total:0)*C;
+    const color = colors[status]||'#5a7a9e';
+    circles += `<circle cx="70" cy="70" r="54" fill="none" stroke="${color}" stroke-width="18" stroke-dasharray="${arc.toFixed(2)} ${(C-arc).toFixed(2)}" stroke-dashoffset="${(-offset).toFixed(2)}" transform="rotate(-90 70 70)" stroke-linecap="butt"/>`;
+    offset += arc;
+  });
+  document.getElementById('donutSvg').innerHTML = `<circle cx="70" cy="70" r="54" fill="none" stroke="#142035" stroke-width="18"/>${circles}<text x="70" y="65" text-anchor="middle" fill="#e2eaf5" font-family="Exo 2" font-size="22" font-weight="700">${total}</text><text x="70" y="82" text-anchor="middle" fill="#5a7a9e" font-family="DM Mono" font-size="9">orders</text>`;
+  const revRows = rev.rows||[];
+  let legend = '';
+  entries.forEach(([status,count]) => {
+    const color = colors[status]||'#5a7a9e';
+    const amt = revRows.filter(r=>r[10]===status).reduce((s,r)=>s+parseMoney(r[7]),0);
+    legend += `<div class="legend-item"><div class="legend-dot" style="background:${color}"></div><span style="flex:1;font-size:12px;">${status}</span><span style="font-family:'DM Mono',monospace;color:${color};font-size:12px;">${count} — $${fmtNum(amt)}</span></div>`;
+  });
+  document.getElementById('donutLegend').innerHTML = legend||'<p style="color:var(--muted);font-size:12px;">No data</p>';
+}
+
+function renderAppointments(appts) {
+  const rows = appts.rows||[];
+  if (!rows.length) { document.getElementById('apptsPanel').innerHTML='<p style="color:var(--muted);font-size:12px;">No appointments yet</p>'; return; }
+  const typeIcon={'Phone Call':'📞','Demo':'🔬','Follow-Up':'📋','In-Person':'🏥'};
+  const statusColor={Confirmed:'rgba(0,229,200,0.3)',Scheduled:'rgba(240,180,41,0.3)',Completed:'rgba(34,197,94,0.2)',Cancelled:'rgba(255,77,109,0.2)'};
+  let html='';
+  rows.forEach(r => {
+    html+=`<div class="appt-card" style="border-color:${statusColor[r[7]]||'var(--border2)'};">
+      <div class="appt-icon">${typeIcon[r[4]]||'📅'}</div>
+      <div class="appt-info"><h4>${r[2]||'Unknown'}</h4><p>${r[4]||''} — ${r[5]||''}</p><p>Interest: ${r[6]||'—'}</p></div>
+      <div class="appt-right">${statusBadge(r[7])}<span>${r[3]||'—'}</span>${r[8]?`<span>Follow-up: ${r[8]}</span>`:''}</div>
+    </div>`;
+  });
+  document.getElementById('apptsPanel').innerHTML=html;
+}
+
+function renderInventoryAlerts(inv) {
+  const rows=inv.rows||[];
+  const oos=rows.filter(r=>r[10]==='OUT OF STOCK').length;
+  const ok=rows.filter(r=>r[10]==='OK').length;
+  const reorder=rows.filter(r=>r[10]==='Reorder Now').length;
+  const totalQty=rows.reduce((s,r)=>s+(parseFloat(r[6])||0),0);
+  const totalVal=rows.reduce((s,r)=>s+parseMoney(r[9]),0);
+  document.getElementById('inventoryAlerts').innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:rgba(255,77,109,0.08);border:1px solid rgba(255,77,109,0.25);border-radius:10px;">
+      <span style="font-size:13px;">🔴 OUT OF STOCK</span><span style="font-family:'DM Mono',monospace;font-size:18px;font-weight:700;color:var(--red);">${oos}</span></div>
+    ${reorder?`<div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:rgba(240,180,41,0.08);border:1px solid rgba(240,180,41,0.25);border-radius:10px;"><span style="font-size:13px;">🟡 REORDER NOW</span><span style="font-family:'DM Mono',monospace;font-size:18px;font-weight:700;color:var(--gold);">${reorder}</span></div>`:''}
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:10px;">
+      <span style="font-size:13px;">🟢 OK / In Stock</span><span style="font-family:'DM Mono',monospace;font-size:18px;font-weight:700;color:var(--green);">${ok}</span></div>
+    <div class="stat-item"><span class="stat-item-label">Total SKUs tracked</span><span class="stat-item-val">${rows.length}</span></div>
+    <div class="stat-item"><span class="stat-item-label">Total units in stock</span><span class="stat-item-val">${totalQty}</span></div>
+    <div class="stat-item"><span class="stat-item-label">Total stock value</span><span class="stat-item-val">$${fmtNum(totalVal)}</span></div>`;
+}
+
+// ═══════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════
+function parseMoney(v) { if(v===null||v===undefined||v==='') return 0; return parseFloat(String(v).replace(/[$,\s]/g,''))||0; }
+function recomputeSummary(rev) {
+  const rows=rev.rows||[];
+  let totalRevenue=0,completedRevenue=0;
+  const statusCounts={},categoryCounts={};
+  rows.forEach(r=>{
+    const total=parseMoney(r[7]),status=r[10]||'Unknown',cat=r[4]||'Other';
+    totalRevenue+=total;
+    if(status==='Completed') completedRevenue+=total;
+    statusCounts[status]=(statusCounts[status]||0)+1;
+    categoryCounts[cat]=(categoryCounts[cat]||0)+total;
+  });
+  rev.summary={totalRevenue,completedRevenue,orderCount:rows.length,avgOrderValue:rows.length>0?(totalRevenue/rows.length).toFixed(2):'0.00',statusCounts,categoryCounts};
+  return rev;
+}
+function statusBadge(s) { const m={Completed:'green',Processing:'gold',Shipped:'blue',Cancelled:'red',Confirmed:'cyan',Scheduled:'gold',Refunded:'muted'}; return `<span class="badge badge-${m[s]||'muted'}">${s||'—'}</span>`; }
+function fmtNum(n) { const f=parseMoney(n); return f%1===0?f.toLocaleString():f.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function setText(id,val) { const el=document.getElementById(id); if(el) el.textContent=val; }
+function setLive(online,ts) {
+  const dot=document.getElementById('liveDot'), status=document.getElementById('liveStatus');
+  dot.className='live-dot'+(online?'':' offline');
+  status.textContent=online&&ts?`Updated ${new Date(ts).toLocaleTimeString()}`:online?'Live':'Disconnected';
+}
+function showError(msg) { const t=document.getElementById('errorToast'); t.textContent='⚠ '+msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),6000); }
+
+// ═══════════════════════════════════════════
+//  FORM SUBMISSIONS
+// ═══════════════════════════════════════════
+function submitOrder() {
+  const fields = {
+    orderId:     document.getElementById('rev_orderId').value.trim(),
+    date:        document.getElementById('rev_date').value,
+    custId:      document.getElementById('rev_custId').value.trim(),
+    custName:    document.getElementById('rev_custName').value.trim(),
+    category:    document.getElementById('rev_category').value.trim(),
+    productId:   document.getElementById('rev_productId').value.trim(),
+    productName: document.getElementById('rev_productName').value.trim(),
+    total:       document.getElementById('rev_total').value,
+    cost:        document.getElementById('rev_cost').value,
+    status:      document.getElementById('rev_status').value,
+    payment:     document.getElementById('rev_payment').value,
+    shipDate:    document.getElementById('rev_shipDate').value,
+    notes:       document.getElementById('rev_notes').value.trim(),
+  };
+  if (!fields.orderId || !fields.custId || !fields.total) {
+    setFormResult('revResult', '⚠ Order ID, Customer ID and Total are required.', 'error'); return;
+  }
+  submitToSheet('addOrder', fields, 'revBtnText', 'revResult', '💰 Submit Order', () => {
+    document.querySelectorAll('#revenueForm input, #revenueForm textarea').forEach(el => el.value = '');
+    document.getElementById('rev_custId').value    = '';
+    document.getElementById('rev_productId').value = '';
+  });
+}
+
+function submitAppointment() {
+  const fields = {
+    apptId:      document.getElementById('appt_id').value.trim(),
+    custId:      document.getElementById('appt_custId').value.trim(),
+    custName:    document.getElementById('appt_custName').value.trim(),
+    date:        document.getElementById('appt_date').value,
+    type:        document.getElementById('appt_type').value,
+    notes:       document.getElementById('appt_notes').value.trim(),
+    products:    Array.from(document.getElementById('appt_products').selectedOptions).map(o=>o.value).join(', '),
+    status:      document.getElementById('appt_status').value,
+    followDate:  document.getElementById('appt_followDate').value,
+    followTime:  document.getElementById('appt_followTime').value,
+    followDone:  document.getElementById('appt_followDone').value,
+    owner:       document.getElementById('appt_owner').value.trim(),
+  };
+  if (!fields.apptId || !fields.custId || !fields.date) {
+    setFormResult('apptResult', '⚠ Appointment ID, Customer ID and Date are required.', 'error'); return;
+  }
+  submitToSheet('addAppointment', fields, 'apptBtnText', 'apptResult', '📅 Submit Appointment', () => {
+    document.querySelectorAll('#apptForm input, #apptForm textarea').forEach(el => el.value = '');
+    document.getElementById('appt_custId').value = '';
+    Array.from(document.getElementById('appt_products').options).forEach(o => o.selected = false);
+    document.getElementById('appt_products_preview').textContent = '';
+  });
+}
+
+function submitToSheet(action, fields, btnId, resultId, btnLabel, onSuccess) {
+  const btn = document.getElementById(btnId).parentElement;
+  btn.disabled = true;
+  document.getElementById(btnId).textContent = '⏳ Submitting…';
+  setFormResult(resultId, '', '');
+
+  const cbName = '__primusSubmitCb_' + Date.now();
+  const script = document.createElement('script');
+  const params = new URLSearchParams({ action, callback: cbName, ...fields });
+  const timer = setTimeout(() => {
+    cleanup();
+    btn.disabled = false;
+    document.getElementById(btnId).textContent = btnLabel;
+    setFormResult(resultId, '⚠ Timed out. Check your connection and try again.', 'error');
+  }, 12000);
+
+  window[cbName] = (res) => {
+    cleanup();
+    btn.disabled = false;
+    document.getElementById(btnId).textContent = btnLabel;
+    if (res && res.success) {
+      setFormResult(resultId, '✅ ' + (res.message || 'Saved successfully!'), 'success');
+      if (onSuccess) onSuccess();
+    } else {
+      setFormResult(resultId, '⚠ ' + (res && res.message ? res.message : 'Something went wrong.'), 'error');
+    }
+  };
+  function cleanup() { clearTimeout(timer); delete window[cbName]; if (script.parentNode) script.parentNode.removeChild(script); }
+  script.src = `${scriptUrl}?${params.toString()}`;
+  script.onerror = () => { cleanup(); btn.disabled=false; document.getElementById(btnId).textContent=btnLabel; setFormResult(resultId,'⚠ Failed to reach Apps Script.','error'); };
+  document.head.appendChild(script);
+}
+
+function setFormResult(id, msg, type) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.className = 'form-result' + (type ? ' ' + type : '');
+}
+
+// ── Mobile detection: swap iframe for open-button on phones/tablets ───────
+function applyMobileLayout() {
+  const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 768;
+  document.getElementById('sheetDesktop').style.display = isMobile ? 'none' : 'block';
+  document.getElementById('sheetMobile').style.display  = isMobile ? 'block' : 'none';
+}
+applyMobileLayout();
+window.addEventListener('resize', applyMobileLayout);
+</script>
+</body>
+</html>
